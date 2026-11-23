@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>М’яз — функція</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            min-height: 100vh;
+        }
+
+        .option-btn {
+            background-color: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 16px;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .option-btn:hover:not(:disabled) {
+            border-color: #0284c7;
+            background-color: #f0f9ff;
+        }
+        .option-btn.correct {
+            border-color: #16a34a;
+            background-color: #dcfce7;
+            color: #14532d;
+        }
+        .option-btn.wrong {
+            border-color: #dc2626;
+            background-color: #fee2e2;
+            color: #7f1d1d;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 flex flex-col items-center">
+
+    <!-- Верхня панель: прогрес і бали -->
+    <header class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-4 sm:px-6 mb-6 flex items-center justify-between gap-4">
+        <div class="flex-1">
+            <div class="flex items-center justify-between text-sm font-bold text-slate-700 mb-2">
+                <span id="questionCounter">Питання 1 з 10</span>
+                <span id="scoreCounter" class="text-sky-700">Бали: 0</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div id="progressBar" class="h-full bg-sky-600 rounded-full transition-all duration-300" style="width: 10%;"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Головний екран запитання -->
+    <main id="gameScreen" class="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 sm:p-8">
+        <p class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-2">
+            Обери функцію м’яза
+        </p>
+
+        <!-- Велика назва м'яза та мінімалістична геометрична схема -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pb-6 mb-6 border-b border-slate-100">
+            <div>
+                <h1 id="muscleTitle" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-1">
+                    Назва м’яза
+                </h1>
+                <p id="muscleNote" class="text-sm sm:text-base text-slate-500">
+                    Коротке розташування
+                </p>
+            </div>
+
+            <!-- Проста геометрична схема без силуету людини -->
+            <div class="w-28 h-24 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shrink-0">
+                <svg id="simpleDiagram" viewBox="0 0 112 96" class="w-full h-full">
+                    <!-- Вставляється JS для кожного м'яза -->
+                </svg>
+            </div>
+        </div>
+
+        <!-- 4 великі кнопки дій/функцій -->
+        <div id="optionsContainer" class="grid grid-cols-1 gap-3">
+            <!-- Генерується JS -->
+        </div>
+
+        <!-- Коротке пояснення та кнопка Далі -->
+        <div id="feedbackBox" class="hidden mt-6 p-4 sm:p-5 rounded-2xl border">
+            <p id="feedbackLabel" class="text-sm font-extrabold uppercase tracking-wide mb-1"></p>
+            <p id="feedbackExplanation" class="text-base font-medium leading-snug"></p>
+            <div class="mt-4 flex justify-end">
+                <button id="nextBtn" onclick="nextQuestion()" class="bg-sky-600 hover:bg-sky-700 text-white font-bold px-6 py-3 rounded-xl text-base transition cursor-pointer">
+                    Далі →
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Екран підсумку після 10-го питання -->
+    <section id="resultScreen" class="hidden w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-8 text-center">
+        <p class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-2">Результат</p>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">
+            Гру завершено
+        </h2>
+        <p id="finalScoreText" class="text-4xl font-extrabold text-sky-700 my-5">
+            0 з 10
+        </p>
+        <p id="finalComment" class="text-base text-slate-600 mb-7"></p>
+        <button onclick="restartGame()" class="bg-sky-600 hover:bg-sky-700 text-white font-bold px-8 py-3.5 rounded-xl text-base transition cursor-pointer">
+            Зіграти ще раз
+        </button>
+    </section>
+
+    <script>
+        // Надзвичайно прості геометричні іконки (прямокутники, кола, лінії)
+        const diagrams = {
+            armBend: `
+                <rect x="20" y="38" width="42" height="12" rx="6" fill="#cbd5e1"/>
+                <rect x="44" y="18" width="12" height="32" rx="6" fill="#e11d48"/>
+                <path d="M74 62 A24 24 0 0 0 68 24" fill="none" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="66,18 63,28 73,26" fill="#0284c7"/>
+            `,
+            armStraighten: `
+                <rect x="20" y="38" width="42" height="12" rx="6" fill="#cbd5e1"/>
+                <rect x="44" y="44" width="12" height="32" rx="6" fill="#e11d48"/>
+                <path d="M68 24 A24 24 0 0 1 74 62" fill="none" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="75,68 79,58 69,60" fill="#0284c7"/>
+            `,
+            breathing: `
+                <rect x="24" y="22" width="64" height="14" rx="7" fill="#cbd5e1"/>
+                <rect x="28" y="44" width="56" height="10" rx="5" fill="#e11d48"/>
+                <line x1="56" y1="58" x2="56" y2="76" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="56,82 50,73 62,73" fill="#0284c7"/>
+            `,
+            legStraighten: `
+                <rect x="48" y="16" width="14" height="34" rx="7" fill="#e11d48"/>
+                <rect x="48" y="48" width="14" height="34" rx="7" fill="#cbd5e1"/>
+                <path d="M68 34 A22 22 0 0 1 72 68" fill="none" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="73,74 77,64 67,66" fill="#0284c7"/>
+            `,
+            tiptoe: `
+                <rect x="48" y="16" width="14" height="42" rx="7" fill="#e11d48"/>
+                <rect x="34" y="64" width="44" height="10" rx="5" fill="#cbd5e1"/>
+                <line x1="86" y1="74" x2="86" y2="54" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="86,48 80,57 92,57" fill="#0284c7"/>
+            `,
+            jaw: `
+                <rect x="30" y="20" width="52" height="14" rx="7" fill="#cbd5e1"/>
+                <rect x="34" y="54" width="44" height="14" rx="7" fill="#e11d48"/>
+                <line x1="56" y1="50" x2="56" y2="38" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="56,33 50,41 62,41" fill="#0284c7"/>
+            `,
+            face: `
+                <circle cx="52" cy="48" r="26" fill="#cbd5e1"/>
+                <circle cx="44" cy="44" r="4" fill="#e11d48"/>
+                <circle cx="60" cy="44" r="4" fill="#e11d48"/>
+                <path d="M44 56 Q52 63 60 56" fill="none" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+            `,
+            shoulderUp: `
+                <rect x="24" y="42" width="64" height="12" rx="6" fill="#cbd5e1"/>
+                <circle cx="56" cy="48" r="13" fill="#e11d48"/>
+                <line x1="88" y1="68" x2="88" y2="28" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="88,22 82,31 94,31" fill="#0284c7"/>
+            `,
+            backPull: `
+                <rect x="34" y="22" width="16" height="52" rx="8" fill="#cbd5e1"/>
+                <rect x="52" y="28" width="16" height="42" rx="8" fill="#e11d48"/>
+                <line x1="84" y1="28" x2="84" y2="68" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="84,74 78,65 90,65" fill="#0284c7"/>
+            `,
+            torsoBend: `
+                <rect x="46" y="20" width="20" height="56" rx="10" fill="#e11d48"/>
+                <path d="M74 28 Q90 48 74 68" fill="none" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+                <polygon points="71,73 81,69 73,62" fill="#0284c7"/>
+            `
+        };
+
+        const questionsData = [
+            {
+                muscle: "Двоголовий м’яз плеча (біцепс)",
+                note: "Передня поверхня плеча",
+                diagram: diagrams.armBend,
+                correct: "Згинає руку в лікті",
+                options: [
+                    "Згинає руку в лікті",
+                    "Розгинає руку в лікті",
+                    "Піднімає на носки",
+                    "Пережовує їжу"
+                ],
+                explanation: "При скороченні біцепс тягне передпліччя вгору і згинає руку в ліктьовому суглобі."
+            },
+            {
+                muscle: "Триголовий м’яз плеча (трицепс)",
+                note: "Задня поверхня плеча",
+                diagram: diagrams.armStraighten,
+                correct: "Розгинає руку в лікті",
+                options: [
+                    "Розгинає руку в лікті",
+                    "Згинає руку в лікті",
+                    "Нахиляє тулуб уперед",
+                    "Виражає емоції на обличчі"
+                ],
+                explanation: "Трицепс працює протилежно до біцепса і випрямляє руку в ліктьовому суглобі."
+            },
+            {
+                muscle: "Діафрагма",
+                note: "Між грудною і черевною порожнинами",
+                diagram: diagrams.breathing,
+                correct: "Забезпечує дихальні рухи",
+                options: [
+                    "Забезпечує дихальні рухи",
+                    "Згинає ногу в коліні",
+                    "Піднімає руку вбік",
+                    "Рухає нижню щелепу"
+                ],
+                explanation: "Скорочення діафрагми змінює об’єм грудної порожнини та забезпечує вдих і видих."
+            },
+            {
+                muscle: "Чотириголовий м’яз стегна",
+                note: "Передня поверхня стегна",
+                diagram: diagrams.legStraighten,
+                correct: "Розгинає ногу в коліні",
+                options: [
+                    "Розгинає ногу в коліні",
+                    "Згинає руку в лікті",
+                    "Забезпечує мовлення",
+                    "Нахиляє тулуб уперед"
+                ],
+                explanation: "Цей потужний м’яз розгинає ногу в колінному суглобі під час ходьби, бігу та стрибків."
+            },
+            {
+                muscle: "Литковий м’яз",
+                note: "Задня поверхня гомілки",
+                diagram: diagrams.tiptoe,
+                correct: "Згинає стопу та піднімає на носки",
+                options: [
+                    "Згинає стопу та піднімає на носки",
+                    "Розгинає руку в лікті",
+                    "Пережовує їжу",
+                    "Опускає руку вниз"
+                ],
+                explanation: "Литковий м’яз тягне п’яту вгору, дозволяючи стати навшпиньки та відштовхнутися під час ходьби."
+            },
+            {
+                muscle: "Жувальні м’язи",
+                note: "Бічна поверхня голови та щелепа",
+                diagram: diagrams.jaw,
+                correct: "Рухають нижню щелепу під час жування",
+                options: [
+                    "Рухають нижню щелепу під час жування",
+                    "Згинають стопу",
+                    "Піднімають руку вгору",
+                    "Розгинають коліно"
+                ],
+                explanation: "Жувальні м’язи приводять у рух нижню щелепу для подрібнення та пережовування їжі."
+            },
+            {
+                muscle: "Мімічні м’язи",
+                note: "Кріпляться до шкіри обличчя",
+                diagram: diagrams.face,
+                correct: "Виражають емоції та беруть участь у мовленні",
+                options: [
+                    "Виражають емоції та беруть участь у мовленні",
+                    "Розгинають ногу в коліні",
+                    "Піднімають на носки",
+                    "Нахиляють тулуб"
+                ],
+                explanation: "Мімічні м’язи зміщують шкіру обличчя, створюючи усмішку, подив та інші вирази обличчя."
+            },
+            {
+                muscle: "Дельтоподібний м’яз",
+                note: "Верхня частина плеча",
+                diagram: diagrams.shoulderUp,
+                correct: "Піднімає руку вбік до рівня плеча",
+                options: [
+                    "Піднімає руку вбік до рівня плеча",
+                    "Згинає стопу",
+                    "Пережовує їжу",
+                    "Виражає емоції"
+                ],
+                explanation: "Дельтоподібний м’яз піднімає руку вбік і вперед у плечовому суглобі."
+            },
+            {
+                muscle: "Найширший м’яз спини",
+                note: "Нижня та бічна частина спини",
+                diagram: diagrams.backPull,
+                correct: "Тягне руку вниз і назад до тулуба",
+                options: [
+                    "Тягне руку вниз і назад до тулуба",
+                    "Розгинає ногу в коліні",
+                    "Забезпечує жування",
+                    "Згинає стопу"
+                ],
+                explanation: "Цей м’яз приводить руку до тулуба і тягне її назад, що важливо при підтягуванні та плаванні."
+            },
+            {
+                muscle: "Прямий м’яз живота",
+                note: "Передня стінка живота",
+                diagram: diagrams.torsoBend,
+                correct: "Нахиляє тулуб уперед",
+                options: [
+                    "Нахиляє тулуб уперед",
+                    "Піднімає на носки",
+                    "Згинає руку в лікті",
+                    "Пережовує їжу"
+                ],
+                explanation: "Прямий м’яз живота згинає хребет (нахиляє тулуб уперед) і підтримує органи черевної порожнини."
+            }
+        ];
+
+        let questions = [];
+        let index = 0;
+        let score = 0;
+        let answered = false;
+
+        function shuffle(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function restartGame() {
+            index = 0;
+            score = 0;
+            answered = false;
+            questions = shuffle(questionsData);
+
+            document.getElementById("resultScreen").classList.add("hidden");
+            document.getElementById("gameScreen").classList.remove("hidden");
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            answered = false;
+            const q = questions[index];
+            const total = questions.length;
+
+            document.getElementById("questionCounter").textContent = `Питання ${index + 1} з ${total}`;
+            document.getElementById("scoreCounter").textContent = `Бали: ${score}`;
+            document.getElementById("progressBar").style.width = `${((index + 1) / total) * 100}%`;
+
+            document.getElementById("muscleTitle").textContent = q.muscle;
+            document.getElementById("muscleNote").textContent = q.note;
+            document.getElementById("simpleDiagram").innerHTML = q.diagram;
+
+            document.getElementById("feedbackBox").classList.add("hidden");
+            document.getElementById("nextBtn").textContent = (index === total - 1) ? "Результати →" : "Далі →";
+
+            const container = document.getElementById("optionsContainer");
+            container.innerHTML = "";
+
+            shuffle(q.options).forEach((optionText) => {
+                const btn = document.createElement("button");
+                btn.className = "option-btn w-full p-4 text-left font-bold text-base sm:text-lg text-slate-800 cursor-pointer";
+                btn.textContent = optionText;
+                btn.onclick = () => selectOption(btn, optionText, q);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectOption(btn, chosenText, q) {
+            if (answered) return;
+            answered = true;
+
+            const isCorrect = chosenText === q.correct;
+            const buttons = document.querySelectorAll("#optionsContainer .option-btn");
+
+            buttons.forEach((b) => {
+                b.disabled = true;
+                if (b.textContent === q.correct) {
+                    b.classList.add("correct");
+                }
+            });
+
+            const feedbackBox = document.getElementById("feedbackBox");
+            const feedbackLabel = document.getElementById("feedbackLabel");
+            const feedbackExplanation = document.getElementById("feedbackExplanation");
+
+            feedbackBox.classList.remove("hidden", "bg-emerald-50", "border-emerald-300", "text-emerald-950", "bg-rose-50", "border-rose-300", "text-rose-950");
+
+            if (isCorrect) {
+                btn.classList.add("correct");
+                score++;
+                document.getElementById("scoreCounter").textContent = `Бали: ${score}`;
+                feedbackBox.classList.add("bg-emerald-50", "border-emerald-300", "text-emerald-950");
+                feedbackLabel.textContent = "Правильно";
+            } else {
+                btn.classList.add("wrong");
+                feedbackBox.classList.add("bg-rose-50", "border-rose-300", "text-rose-950");
+                feedbackLabel.textContent = "Неправильно";
+            }
+
+            feedbackExplanation.textContent = q.explanation;
+        }
+
+        function nextQuestion() {
+            index++;
+            if (index < questions.length) {
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById("gameScreen").classList.add("hidden");
+            document.getElementById("resultScreen").classList.remove("hidden");
+
+            const total = questions.length;
+            document.getElementById("finalScoreText").textContent = `${score} з ${total}`;
+
+            let comment = "Спробуй ще раз, щоб закріпити функції всіх м’язів.";
+            if (score >= 9) {
+                comment = "Чудовий результат! Ти впевнено знаєш функції м’язів.";
+            } else if (score >= 6) {
+                comment = "Добра робота! Ще трохи практики — і буде максимум.";
+            }
+            document.getElementById("finalComment").textContent = comment;
+        }
+
+        window.onload = restartGame;
+    </script>
+</body>
+</html>
